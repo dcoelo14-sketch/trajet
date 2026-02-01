@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Enregistrement GPS</title>
+<style>
+    body { font-family: Arial; padding: 20px; }
+    button { padding: 10px 20px; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<h2>Enregistrement GPS</h2>
+
+<button id="toggleBtn">Démarrer</button>
+<p id="status">En attente…</p>
+
+<h3>Points enregistrés</h3>
+<ul id="log"></ul>
+
+<h3>Kilométrage total</h3>
+<p id="distance">0 km</p>
+
+<script>
+let intervalId = null;
+const INTERVAL = 60 * 1000; // 1 minute
+
+// Formule de Haversine
+function distanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // rayon de la Terre en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI/180) *
+        Math.cos(lat2 * Math.PI/180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function updateDistanceDisplay(data) {
+    let total = 0;
+    for (let i = 1; i < data.length; i++) {
+        const p1 = data[i-1];
+        const p2 = data[i];
+        total += distanceKm(p1.lat, p1.lon, p2.lat, p2.lon);
+    }
+    document.getElementById("distance").textContent =
+        total.toFixed(3) + " km";
+}
+
+function savePosition() {
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const now = new Date();
+            const point = {
+                time: now.toLocaleTimeString(),
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude
+            };
+
+            // Sauvegarde
+            const data = JSON.parse(localStorage.getItem("gps_points") || "[]");
+            data.push(point);
+            localStorage.setItem("gps_points", JSON.stringify(data));
+
+            // Affichage du point
+            const li = document.createElement("li");
+            li.textContent = `${point.time} → ${point.lat}, ${point.lon}`;
+            document.getElementById("log").appendChild(li);
+
+            // Mise à jour du kilométrage
+            updateDistanceDisplay(data);
+
+            document.getElementById("status").textContent =
+                "Dernier enregistrement : " + point.time;
+        },
+        err => {
+            document.getElementById("status").textContent =
+                "Erreur GPS : " + err.message;
+        }
+    );
+}
+
+document.getElementById("toggleBtn").onclick = () => {
+    if (intervalId === null) {
+        savePosition(); // premier point immédiat
+        intervalId = setInterval(savePosition, INTERVAL);
+        document.getElementById("toggleBtn").textContent = "Arrêter";
+        document.getElementById("status").textContent = "Enregistrement en cours…";
+    } else {
+        clearInterval(intervalId);
+        intervalId = null;
+        document.getElementById("toggleBtn").textContent = "Démarrer";
+        document.getElementById("status").textContent = "Enregistrement arrêté.";
+    }
+};
+</script>
+
+</body>
+</html>
