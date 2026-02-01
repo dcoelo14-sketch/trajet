@@ -3,9 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <title>Enregistrement GPS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-    body { font-family: Arial; padding: 20px; }
-    button { padding: 10px 20px; font-size: 16px; }
+    body {
+        font-family: Arial, sans-serif;
+        padding: 15px;
+        max-width: 600px;
+        margin: auto;
+    }
+    button {
+        padding: 12px 20px;
+        font-size: 18px;
+        margin: 5px 0;
+        width: 100%;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+    }
+    #toggleBtn { background: #007bff; color: white; }
+    #resetBtn { background: #dc3545; color: white; }
+    ul { padding-left: 15px; }
 </style>
 </head>
 <body>
@@ -13,6 +31,8 @@
 <h2>Enregistrement GPS</h2>
 
 <button id="toggleBtn">Démarrer</button>
+<button id="resetBtn">Réinitialiser</button>
+
 <p id="status">En attente…</p>
 
 <h3>Points enregistrés</h3>
@@ -27,24 +47,24 @@ const INTERVAL = 60 * 1000; // 1 minute
 
 // Formule de Haversine
 function distanceKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; // rayon de la Terre en km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a =
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.sin(dLat/2) ** 2 +
         Math.cos(lat1 * Math.PI/180) *
         Math.cos(lat2 * Math.PI/180) *
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
+        Math.sin(dLon/2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function updateDistanceDisplay(data) {
     let total = 0;
     for (let i = 1; i < data.length; i++) {
-        const p1 = data[i-1];
-        const p2 = data[i];
-        total += distanceKm(p1.lat, p1.lon, p2.lat, p2.lon);
+        total += distanceKm(
+            data[i-1].lat, data[i-1].lon,
+            data[i].lat, data[i].lon
+        );
     }
     document.getElementById("distance").textContent =
         total.toFixed(3) + " km";
@@ -60,17 +80,14 @@ function savePosition() {
                 lon: pos.coords.longitude
             };
 
-            // Sauvegarde
             const data = JSON.parse(localStorage.getItem("gps_points") || "[]");
             data.push(point);
             localStorage.setItem("gps_points", JSON.stringify(data));
 
-            // Affichage du point
             const li = document.createElement("li");
             li.textContent = `${point.time} → ${point.lat}, ${point.lon}`;
             document.getElementById("log").appendChild(li);
 
-            // Mise à jour du kilométrage
             updateDistanceDisplay(data);
 
             document.getElementById("status").textContent =
@@ -85,7 +102,7 @@ function savePosition() {
 
 document.getElementById("toggleBtn").onclick = () => {
     if (intervalId === null) {
-        savePosition(); // premier point immédiat
+        savePosition();
         intervalId = setInterval(savePosition, INTERVAL);
         document.getElementById("toggleBtn").textContent = "Arrêter";
         document.getElementById("status").textContent = "Enregistrement en cours…";
@@ -95,6 +112,13 @@ document.getElementById("toggleBtn").onclick = () => {
         document.getElementById("toggleBtn").textContent = "Démarrer";
         document.getElementById("status").textContent = "Enregistrement arrêté.";
     }
+};
+
+document.getElementById("resetBtn").onclick = () => {
+    localStorage.removeItem("gps_points");
+    document.getElementById("log").innerHTML = "";
+    document.getElementById("distance").textContent = "0 km";
+    document.getElementById("status").textContent = "Données réinitialisées.";
 };
 </script>
 
