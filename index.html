@@ -32,6 +32,7 @@
 
 <button id="toggleBtn">Démarrer</button>
 <button id="resetBtn">Réinitialiser</button>
+<button id="export-gps">Exporter mes points GPS</button>
 
 <p id="status">En attente…</p>
 
@@ -120,9 +121,25 @@ document.getElementById("resetBtn").onclick = () => {
     document.getElementById("distance").textContent = "0 km";
     document.getElementById("status").textContent = "Données réinitialisées.";
 };
+
+    document.getElementById("export-gps").addEventListener("click", () => {
+    const data = localStorage.getItem("gps_points") || "[]";
+
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "gps_points.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+});
+
 </script>
 
 </body>
 </html>
+
 
 
